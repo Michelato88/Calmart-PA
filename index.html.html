@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Comercial — CALMART</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f5f7; padding: 24px; color: #1a1a1a; }
+  .dash { max-width: 980px; margin: 0 auto; }
+
+  /* HEADER */
+  .header { background: #000066; padding: 18px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { color: #fff; font-size: 18px; font-weight: 500; }
+  .header-sub { color: #0099FF; font-size: 13px; margin-top: 3px; }
+  .header-badge { background: #0099FF; color: #fff; font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
+
+  /* METRICS */
+  .section-title { font-size: 13px; font-weight: 500; color: #000066; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+  .metric { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; text-align: center; }
+  .metric-label { font-size: 11px; color: #6b7280; margin-bottom: 5px; }
+  .metric-value { font-size: 20px; font-weight: 600; color: #000066; }
+  .metric-value.accent { color: #0099FF; }
+  .metric-value.muted { color: #888; }
+
+  /* CARDS */
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* LEGEND */
+  .legend-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; font-size: 12px; color: #6b7280; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .legend-dash { width: 16px; height: 0; border-top: 2px dashed #888; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table.fat-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.fat-table th { font-size: 11px; font-weight: 500; color: #6b7280; text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+  table.fat-table td { padding: 8px 10px; border-bottom: 0.5px solid #e5e7eb; color: #1a1a1a; }
+  table.fat-table tr:last-child td { border-bottom: none; }
+  .tr-highlight { background: #00006806; }
+  .td-month { font-weight: 500; color: #000066; }
+  .td-bar-cell { width: 120px; }
+  .td-bar-bg { background: #e8eaf5; border-radius: 3px; height: 8px; overflow: hidden; }
+  .td-bar-fill { background: #000066; height: 100%; border-radius: 3px; }
+  .td-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .td-pct { text-align: right; font-size: 11px; color: #9ca3af; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid #000066; color: #000066; background: transparent; transition: all 0.15s; }
+  .tab.active { background: #000066; color: #fff; }
+  .tab:hover:not(.active) { background: #00006610; }
+
+  /* OUTBOUND */
+  .ob-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+  .ob-group-label { font-size: 11px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.8px; padding-bottom: 4px; border-bottom: 0.5px solid #e5e7eb; margin-top: 8px; grid-column: 1 / -1; }
+  .ob-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; border: 0.5px solid #e5e7eb; }
+  .ob-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .ob-hot  { background: #0099FF; }
+  .ob-proj { background: #f0a500; }
+  .ob-warm { background: #000066; }
+  .ob-cold { background: #aaa; }
+  .ob-lost { background: #E24B4A; }
+  .ob-name { font-size: 12px; font-weight: 500; color: #1a1a1a; }
+  .ob-desc { font-size: 11px; color: #6b7280; margin-top: 2px; line-height: 1.4; }
+
+  @media (max-width: 600px) {
+    .metrics-row { grid-template-columns: repeat(2,1fr); }
+    .ob-grid-2col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="dash">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="header-title">Dashboard Comercial — CALMART</div>
+      <div class="header-sub">Jan/25 → Mar/26 · Atualizado em Abr/26</div>
+    </div>
+    <div class="header-badge">Performance PA</div>
+  </div>
+
+  <!-- MÉTRICAS LINHA 1 — MÊS ATUAL -->
+  <div class="metrics-row">
+    <div class="metric">
+      <div class="metric-label">Faturamento Mar/26</div>
+      <div class="metric-value">R$ 337k</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Melhor mês histórico</div>
+      <div class="metric-value accent">R$ 337k</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Clientes ativos Mar/26</div>
+      <div class="metric-value">20</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Ticket médio Mar/26</div>
+      <div class="metric-value">R$ 16,9k</div>
+    </div>
+  </div>
+
+  <!-- MÉTRICAS LINHA 2 — HISTÓRICO -->
+  <div class="metrics-row" style="margin-bottom:16px">
+    <div class="metric">
+      <div class="metric-label">Fat. médio mensal</div>
+      <div class="metric-value" id="mFatMedio"></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Pior mês histórico</div>
+      <div class="metric-value muted" id="mPiorMes"></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Média clientes ativos</div>
+      <div class="metric-value" id="mMediaClientes"></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Ticket médio mensal</div>
+      <div class="metric-value" id="mTktMedio"></div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO FATURAMENTO MENSAL -->
+  <div class="card">
+    <div class="section-title">Faturamento mensal</div>
+    <div class="legend-row">
+      <span class="legend-item"><span class="legend-dot" style="background:#000066"></span>Sellers</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#0099FF"></span>Galpão Drop</span>
+    </div>
+    <div class="chart-wrap" style="height:220px"><canvas id="chartFat"></canvas></div>
+  </div>
+
+  <!-- TABELA DETALHADA -->
+  <div class="card">
+    <div class="section-title">Tabela de faturamento — detalhado</div>
+    <div class="table-wrap">
+      <table class="fat-table">
+        <thead><tr>
+          <th>Mês</th>
+          <th class="td-num">Total (R$)</th>
+          <th class="td-num">Sellers</th>
+          <th class="td-num">Drop</th>
+          <th class="td-num">% Drop</th>
+          <th class="td-num">Ativos</th>
+          <th>Evolução</th>
+        </tr></thead>
+        <tbody id="fatTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GRÁFICO DE LINHAS SHARE -->
+  <div class="card">
+    <div class="section-title">Share mensal</div>
+    <div class="legend-row">
+      <span class="legend-item"><span class="legend-dot" style="background:#000066"></span>Sellers %</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#0099FF"></span>Galpão Drop %</span>
+      <span class="legend-item"><span class="legend-dash"></span>Clientes ativos</span>
+    </div>
+    <div class="chart-wrap" style="height:280px"><canvas id="chartLinha"></canvas></div>
+  </div>
+
+  <!-- GRÁFICO SHARE POR CLIENTE -->
+  <div class="card">
+    <div class="section-title">Share por cliente</div>
+    <div class="tabs">
+      <button class="tab active" onclick="showClientChart('mar26',this)">Março/26</button>
+      <button class="tab" onclick="showClientChart('ano26',this)">Jan–Mar/26 (acumulado)</button>
+    </div>
+    <div class="legend-row">
+      <span class="legend-item"><span class="legend-dot" style="background:#000066"></span>Top clientes</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#0099FF"></span>Outros</span>
+    </div>
+    <div class="chart-wrap" style="height:340px"><canvas id="chartClients"></canvas></div>
+  </div>
+
+  <!-- OUTBOUND -->
+  <div class="card">
+    <div class="section-title">Outbound / Prospecção — Status atual</div>
+    <div class="ob-grid-2col" id="obGrid"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── DADOS ────────────────────────────────────────────────────────
+const fatData = [
+  {mes:'Jan/25', total:148798, sellers:148798, drop:0,     ativos:19},
+  {mes:'Fev/25', total:110566, sellers:110566, drop:0,     ativos:16},
+  {mes:'Mar/25', total:111437, sellers:111437, drop:0,     ativos:14},
+  {mes:'Abr/25', total:182882, sellers:182882, drop:0,     ativos:18},
+  {mes:'Mai/25', total:137957, sellers:137957, drop:0,     ativos:17},
+  {mes:'Jun/25', total:195064, sellers:195064, drop:0,     ativos:18},
+  {mes:'Jul/25', total:217054, sellers:217054, drop:0,     ativos:20},
+  {mes:'Ago/25', total:249539, sellers:248195, drop:1344,  ativos:23},
+  {mes:'Set/25', total:266364, sellers:260068, drop:6296,  ativos:22},
+  {mes:'Out/25', total:331146, sellers:318478, drop:12668, ativos:26},
+  {mes:'Nov/25', total:300919, sellers:285630, drop:15289, ativos:21},
+  {mes:'Dez/25', total:220382, sellers:205703, drop:14679, ativos:18},
+  {mes:'Jan/26', total:305564, sellers:269861, drop:35703, ativos:20},
+  {mes:'Fev/26', total:252600, sellers:221155, drop:31445, ativos:21},
+  {mes:'Mar/26', total:337322, sellers:303921, drop:33401, ativos:20},
+];
+
+// ─── HELPERS ─────────────────────────────────────────────────────
+const fmtFull = v => 'R$ ' + v.toLocaleString('pt-BR');
+const fmtK    = v => 'R$ ' + Math.round(v/1000) + 'k';
+
+// ─── MÉTRICAS HISTÓRICAS ──────────────────────────────────────────
+const totais  = fatData.map(d => d.total);
+const ativos  = fatData.map(d => d.ativos);
+const tickets = fatData.map(d => d.ativos > 0 ? d.total / d.ativos : 0);
+
+const fatMedio      = Math.round(totais.reduce((a,b) => a+b, 0) / totais.length);
+const piorVal       = Math.min(...totais);
+const piorMes       = fatData[totais.indexOf(piorVal)].mes;
+const mediaAtivos   = Math.round(ativos.reduce((a,b) => a+b, 0) / ativos.length);
+const tktMedioGeral = Math.round(tickets.reduce((a,b) => a+b, 0) / tickets.length);
+
+document.getElementById('mFatMedio').textContent      = fmtK(fatMedio);
+document.getElementById('mPiorMes').innerHTML         = fmtK(piorVal) + '<div style="font-size:10px;color:#aaa;margin-top:2px">' + piorMes + '</div>';
+document.getElementById('mMediaClientes').textContent = mediaAtivos;
+document.getElementById('mTktMedio').textContent      = fmtK(tktMedioGeral);
+
+// ─── TABELA ───────────────────────────────────────────────────────
+const maxTotal = Math.max(...fatData.map(d => d.total));
+const fatTable = document.getElementById('fatTable');
+fatData.forEach((d,i) => {
+  const pct  = d.total > 0 ? Math.round(d.drop / d.total * 100) : 0;
+  const barW = Math.round(d.total / maxTotal * 100);
+  const tr   = document.createElement('tr');
+  if (i % 2 === 0) tr.className = 'tr-highlight';
+  tr.innerHTML = `
+    <td class="td-month">${d.mes}</td>
+    <td class="td-num">${fmtFull(d.total)}</td>
+    <td class="td-num">${fmtFull(d.sellers)}</td>
+    <td class="td-num">${d.drop > 0 ? fmtFull(d.drop) : '—'}</td>
+    <td class="td-pct">${d.drop > 0 ? pct + '%' : '—'}</td>
+    <td class="td-num">${d.ativos}</td>
+    <td class="td-bar-cell"><div class="td-bar-bg"><div class="td-bar-fill" style="width:${barW}%"></div></div></td>
+  `;
+  fatTable.appendChild(tr);
+});
+
+// ─── GRÁFICO BARRAS EMPILHADAS ────────────────────────────────────
+new Chart(document.getElementById('chartFat'), {
+  type: 'bar',
+  data: {
+    labels: fatData.map(d => d.mes),
+    datasets: [
+      {label:'Sellers',     data: fatData.map(d => d.sellers), backgroundColor:'#000066', stack:'s'},
+      {label:'Galpão Drop', data: fatData.map(d => d.drop),    backgroundColor:'#0099FF', stack:'s'}
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: {display: false},
+      tooltip: {callbacks: {label: c => c.dataset.label + ': ' + fmtFull(c.raw)}}
+    },
+    scales: {
+      x: {stacked:true, ticks:{font:{size:10}, color:'#888', autoSkip:false, maxRotation:45}, grid:{display:false}},
+      y: {stacked:true, ticks:{callback: v => 'R$' + Math.round(v/1000) + 'k', font:{size:10}, color:'#888'}, grid:{color:'#eee'}}
+    }
+  }
+});
+
+// ─── GRÁFICO LINHAS SHARE + CLIENTES ─────────────────────────────
+new Chart(document.getElementById('chartLinha'), {
+  type: 'line',
+  data: {
+    labels: fatData.map(d => d.mes),
+    datasets: [
+      {
+        label:'Sellers %',
+        data: fatData.map(d => Math.round(d.sellers / d.total * 100)),
+        borderColor:'#000066', backgroundColor:'transparent',
+        pointBackgroundColor:'#000066', pointRadius:4, pointHoverRadius:6,
+        tension:0.35, borderWidth:2.5, yAxisID:'yPct'
+      },
+      {
+        label:'Galpão Drop %',
+        data: fatData.map(d => Math.round(d.drop / d.total * 100)),
+        borderColor:'#0099FF', backgroundColor:'transparent',
+        pointBackgroundColor:'#0099FF', pointRadius:4, pointHoverRadius:6,
+        tension:0.35, borderWidth:2.5, yAxisID:'yPct'
+      },
+      {
+        label:'Clientes ativos',
+        data: fatData.map(d => d.ativos),
+        borderColor:'#999', backgroundColor:'transparent',
+        pointBackgroundColor:'#999', pointRadius:4, pointHoverRadius:6,
+        tension:0.35, borderWidth:1.5, borderDash:[5,4], yAxisID:'yAtivos'
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: {display: false},
+      tooltip: {callbacks: {label: c => c.dataset.yAxisID === 'yAtivos' ? 'Clientes ativos: ' + c.raw : c.dataset.label + ': ' + c.raw + '%'}}
+    },
+    scales: {
+      x: {ticks:{font:{size:10}, color:'#888', autoSkip:false, maxRotation:45}, grid:{display:false}},
+      yPct:    {type:'linear', position:'left',  min:0, max:105, ticks:{callback:v=>v+'%', font:{size:10}, color:'#888', stepSize:20}, grid:{color:'#eee'}},
+      yAtivos: {type:'linear', position:'right', min:0, max:32,  ticks:{stepSize:8, font:{size:10}, color:'#bbb'}, grid:{display:false}}
+    }
+  }
+});
+
+// ─── DADOS CLIENTES ───────────────────────────────────────────────
+// Março/26 — Top 8 individualmente; "Outros" = demais clientes nomeados (rank 9+)
+// Nota: Projetor Brasil (R$149) está em centenas conforme planilha — valor correto
+const clientsMar = [
+  {name:'Nippo',           v:33673},
+  {name:'Galpão Drop',     v:33402},
+  {name:'Lunim',           v:32554},
+  {name:'Attabuy',         v:30986},
+  {name:'Mariana Siqueira',v:26452},
+  {name:'Pet Med',         v:24319},
+  {name:'Scarmif Group',   v:24298},
+  {name:'Cão Pescador',    v:16102},
+];
+const outrosMar = 82882; // demais clientes nomeados (rank 9+): EN Pereira, Pet Web, Jumpet, Claripet, Açomix, etc.
+
+// Jan–Mar/26 acumulado — Top 8; "Outros" = demais nomeados (rank 9+)
+const clientsAno = [
+  {name:'Galpão Drop',     v:100551},
+  {name:'Nippo',           v:91160},
+  {name:'Lunim',           v:90041},
+  {name:'Attabuy',         v:68366},
+  {name:'Scarmif Group',   v:67468},
+  {name:'Pet Med',         v:57866},
+  {name:'Mariana Siqueira',v:50385},
+  {name:'Pet Web',         v:45909},
+];
+const outrosAno = 223941; // demais clientes nomeados (rank 9+)
+
+// ─── GRÁFICO BARRAS HORIZONTAL CLIENTES ──────────────────────────
+let clientChart = null;
+function showClientChart(mode, btn) {
+  document.querySelectorAll('.tabs .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const clients = mode === 'mar26' ? clientsMar : clientsAno;
+  const outros  = mode === 'mar26' ? outrosMar  : outrosAno;
+  const total   = mode === 'mar26'
+    ? clientsMar.reduce((a,c)=>a+c.v,0) + outrosMar
+    : clientsAno.reduce((a,c)=>a+c.v,0) + outrosAno;
+  if (clientChart) clientChart.destroy();
+  clientChart = new Chart(document.getElementById('chartClients'), {
+    type: 'bar',
+    data: {
+      labels: [...clients.map(c => c.name), 'Outros'],
+      datasets: [{
+        data: [...clients.map(c => c.v), outros],
+        backgroundColor: [...clients.map(() => '#000066'), '#0099FF'],
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {display: false},
+        tooltip: {callbacks: {label: c => {
+          const pct = Math.round(c.raw / total * 100);
+          return fmtFull(c.raw) + ' (' + pct + '%)';
+        }}}
+      },
+      scales: {
+        x: {ticks:{callback: v => 'R$' + Math.round(v/1000) + 'k', font:{size:10}, color:'#888'}, grid:{color:'#eee'}},
+        y: {ticks:{font:{size:11}, color:'#1a1a1a'}, grid:{display:false}}
+      }
+    }
+  });
+}
+showClientChart('mar26', document.querySelector('.tabs .tab.active'));
+
+// ─── OUTBOUND ─────────────────────────────────────────────────────
+const obItems = [
+  // QUENTE
+  {status:'hot',  name:'Maxeb',                 desc:'WL capas térmicas — reunião presencial agendada'},
+  {status:'hot',  name:'Animania RJ',            desc:'Interesse confirmado — follow-up em andamento'},
+  // PROJETOS
+  {status:'proj', name:'Instagram CALMART',      desc:'Orçamento em elaboração — comparando fornecedores'},
+  {status:'proj', name:'Website CALMART',        desc:'Projeto parado — aguardando definição interna'},
+  // EM ANDAMENTO
+  {status:'warm', name:'Roberto (ind. Angela)',  desc:'Interesse em testar; sondando pagamento e pedido mínimo'},
+  {status:'warm', name:'iGoo MG',               desc:'Analisando portfólio'},
+  {status:'warm', name:"Delivery's Eco Park SP", desc:'Analisando portfólio'},
+  {status:'warm', name:'Praça do Pet',           desc:'Analisando portfólio'},
+  {status:'warm', name:'TemdeTudo',              desc:'Grandes volumes — sondou WL pet + tapetes; cético'},
+  {status:'warm', name:'Haus Pet Shop',          desc:'Buscando contato certo via SAC/front'},
+  {status:'warm', name:"Dog's Day",              desc:'Buscando contato certo via SAC/front'},
+  {status:'warm', name:'Bichos Petshop Online',  desc:'Buscando contato certo via SAC/front'},
+  {status:'warm', name:'Pets Express GO',        desc:'Buscando contato certo via SAC/front'},
+  {status:'warm', name:'PoliPet',                desc:'Buscando contato certo via SAC/front'},
+  // SEM RETORNO
+  {status:'cold', name:'Sanremo',                desc:'Samara não retorna ZAP. Seguindo sem pressão'},
+  {status:'cold', name:'Benutri',                desc:'Sem retorno via ZAP e ligação'},
+  {status:'cold', name:'Madupet',                desc:'Sellout fraco; não desenvolve conversa. Visita pode ajudar'},
+  // RECUSOU
+  {status:'lost', name:'PetLove',                desc:'"Muitos fornecedores similares, não é o momento"'},
+];
+
+const statusLabel = {
+  hot:  'Ativo / Quente',
+  proj: 'Projetos internos',
+  warm: 'Em andamento',
+  cold: 'Sem retorno',
+  lost: 'Recusou'
+};
+
+const obGrid = document.getElementById('obGrid');
+let lastGroup = null;
+obItems.forEach(item => {
+  if (item.status !== lastGroup) {
+    const g = document.createElement('div');
+    g.className = 'ob-group-label';
+    g.textContent = statusLabel[item.status];
+    obGrid.appendChild(g);
+    lastGroup = item.status;
+  }
+  const el = document.createElement('div');
+  el.className = 'ob-item';
+  el.innerHTML = `<div class="ob-dot ob-${item.status}"></div><div><div class="ob-name">${item.name}</div><div class="ob-desc">${item.desc}</div></div>`;
+  obGrid.appendChild(el);
+});
+</script>
+</body>
+</html>
